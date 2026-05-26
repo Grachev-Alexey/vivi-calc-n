@@ -147,7 +147,7 @@ function CalculatorSettings({ loading, setLoading }: { loading: boolean; setLoad
                 })}
                 placeholder="5000"
               />
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Абсолютный минимум для всех пакетов
               </p>
             </div>
@@ -164,7 +164,7 @@ function CalculatorSettings({ loading, setLoading }: { loading: boolean; setLoad
                 })}
                 placeholder="15"
               />
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 С какого количества процедур начинается скидка
               </p>
             </div>
@@ -184,7 +184,7 @@ function CalculatorSettings({ loading, setLoading }: { loading: boolean; setLoad
                 })}
                 placeholder="5"
               />
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Процент скидки за количество процедур
               </p>
             </div>
@@ -202,7 +202,7 @@ function CalculatorSettings({ loading, setLoading }: { loading: boolean; setLoad
                 })}
                 placeholder="3000"
               />
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Фиксированная сумма скидки при использовании сертификата
               </p>
             </div>
@@ -220,7 +220,7 @@ function CalculatorSettings({ loading, setLoading }: { loading: boolean; setLoad
                 })}
                 placeholder="25000"
               />
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 От какой суммы курса можно применить сертификат
               </p>
             </div>
@@ -251,7 +251,7 @@ function CalculatorSettings({ loading, setLoading }: { loading: boolean; setLoad
                   </label>
                 ))}
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Выберите доступные варианты рассрочки
               </p>
             </div>
@@ -809,7 +809,7 @@ function UsersManagement() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
               <Input
                 placeholder="PIN код (4-6 цифр)"
                 value={newUser.pin}
@@ -878,17 +878,17 @@ function UsersManagement() {
                   ) : (
                     <>
                       <div className="flex items-center gap-4">
-                        <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        <div className="font-mono text-sm bg-white/10 px-2 py-1 rounded">
                           {user.pin}
                         </div>
                         <div className="font-medium">{user.name}</div>
                         <div className={`text-sm px-2 py-1 rounded ${
-                          user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                          user.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
                         }`}>
                           {user.role === 'admin' ? 'Администратор' : 'Мастер'}
                         </div>
                         <div className={`text-sm px-2 py-1 rounded ${
-                          user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          user.isActive ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
                         }`}>
                           {user.isActive ? 'Активен' : 'Неактивен'}
                         </div>
@@ -984,7 +984,7 @@ function ServicesManagement() {
             <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex-1">
                 <div className="font-medium">{service.title}</div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   ID: {service.yclientsId} • Цена от: {service.priceMin} ₽
                 </div>
               </div>
@@ -1030,7 +1030,7 @@ function SubscriptionTypesManagement() {
       <CardContent>
         <div className="space-y-4">
           {subscriptionTypes.length === 0 ? (
-            <p className="text-gray-500">Нет синхронизированных абонементов. Используйте кнопку "Синхронизировать абонементы" выше.</p>
+            <p className="text-muted-foreground">Нет синхронизированных абонементов. Используйте кнопку "Синхронизировать абонементы" выше.</p>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {subscriptionTypes.map((type) => (
@@ -1038,16 +1038,16 @@ function SubscriptionTypesManagement() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-medium">{type.title}</h4>
-                      <p className="text-sm text-gray-600">ID в Yclients: {type.yclientsId}</p>
+                      <p className="text-sm text-muted-foreground">ID в Yclients: {type.yclientsId}</p>
                       <p className="text-sm font-medium text-green-600">Стоимость: {parseInt(type.cost).toLocaleString()} ₽</p>
-                      <div className="mt-2 text-xs text-gray-500">
+                      <div className="mt-2 text-xs text-muted-foreground">
                         <p>Заморозка: {type.allowFreeze ? `Да (${type.freezeLimit} дней)` : 'Нет'}</p>
                         <p>Обновлено: {new Date(type.updatedAt).toLocaleString()}</p>
                       </div>
                       {type.balanceContainer?.links && (
                         <div className="mt-2">
-                          <p className="text-xs font-medium text-gray-700">Состав услуг:</p>
-                          <div className="text-xs text-gray-600">
+                          <p className="text-xs font-medium text-foreground">Состав услуг:</p>
+                          <div className="text-xs text-muted-foreground">
                             {type.balanceContainer.links.map((link: any, idx: number) => (
                               <span key={idx}>
                                 ID{link.service?.id || 'N/A'} (×{link.count})
@@ -1125,7 +1125,7 @@ function PackagesManagement({ packages, setPackages, loading, setLoading }: {
 
   return (
     <div className="space-y-6 max-h-[calc(100vh-250px)] overflow-y-auto">
-      <p className="text-gray-600">
+      <p className="text-muted-foreground">
         Настройка пакетов услуг. Для управления преимуществами перейдите в раздел "Преимущества".
       </p>
       

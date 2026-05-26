@@ -117,7 +117,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center space-x-4">
                   <div>
                     <p className="font-medium">{user.name}</p>
-                    <p className="text-sm text-gray-500">PIN: {user.pin}</p>
+                    <p className="text-sm text-muted-foreground">PIN: {user.pin}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center space-x-4">
                   <div>
                     <p className="font-medium">{pkg.name}</p>
-                    <p className="text-sm text-gray-500">Тип: {pkg.type}</p>
+                    <p className="text-sm text-muted-foreground">Тип: {pkg.type}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 text-sm">
