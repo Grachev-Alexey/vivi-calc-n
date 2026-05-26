@@ -76,6 +76,25 @@ function DarkInput({ id, type = "text", value, onChange, placeholder, required }
   );
 }
 
+function buildPaymentSchedule(
+  selectedPackage: string,
+  finalCost: number,
+  downPayment: number,
+  installmentMonths: number,
+  startDate: Date
+): { date: string; amount: number; description: string }[] {
+  if (selectedPackage === "vip") {
+    return [{ date: startDate.toISOString().split("T")[0], amount: finalCost, description: "Полная оплата" }];
+  }
+  const schedule = [{ date: startDate.toISOString().split("T")[0], amount: downPayment, description: "Первоначальный взнос" }];
+  const monthly = (finalCost - downPayment) / installmentMonths;
+  for (let i = 1; i <= installmentMonths; i++) {
+    const d = new Date(startDate); d.setMonth(d.getMonth() + i);
+    schedule.push({ date: d.toISOString().split("T")[0], amount: monthly, description: `Платеж ${i} из ${installmentMonths}` });
+  }
+  return schedule;
+}
+
 export default function ClientModal({
   isOpen, onClose, calculation, selectedPackage, selectedServices,
   procedureCount, downPayment, installmentMonths, usedCertificate,
@@ -123,8 +142,16 @@ export default function ClientModal({
     }
     setLoading(true);
     try {
-      const subscriptionData = {
-        client: { phone: phone.replace(/\D/g, ""), email: email || undefined },
+      const packageData = calculation.packages[selectedPackage];
+      const startDate = isAdmin ? new Date(saleDate) : new Date();
+      const paymentSchedule = buildPaymentSchedule(selectedPackage, packageData.finalCost, downPayment, installmentMonths, startDate);
+
+      const body = {
+        clientName,
+        clientPhone: phone.replace(/\D/g, ""),
+        clientEmail: email || undefined,
+        paymentSchedule,
+        pdfVersion: isAdmin ? pdfVersion : "standard",
         calculation: {
           services: selectedServices.map(s => ({
             id: s.yclientsId, serviceId: s.yclientsId, name: s.title, title: s.title,
@@ -136,87 +163,48 @@ export default function ClientModal({
           })),
           packageType: selectedPackage,
           baseCost: calculation.baseCost,
-          finalCost: calculation.packages[selectedPackage].finalCost,
-          totalSavings: calculation.packages[selectedPackage].totalSavings,
+          finalCost: packageData.finalCost,
+          totalSavings: packageData.totalSavings,
           downPayment,
           installmentMonths: selectedPackage === "vip" ? undefined : installmentMonths,
-          monthlyPayment: selectedPackage === "vip" ? undefined : calculation.packages[selectedPackage].monthlyPayment,
+          monthlyPayment: selectedPackage === "vip" ? undefined : packageData.monthlyPayment,
           usedCertificate, freeZones,
-          appliedDiscounts: calculation.packages[selectedPackage].appliedDiscounts,
+          appliedDiscounts: packageData.appliedDiscounts,
+          manualGiftSessions: Object.keys(manualGiftSessions).length > 0 ? manualGiftSessions : undefined,
           ...(isAdmin && { saleDate, masterId: selectedMasterId }),
         },
       };
-      if (manualGiftSessions[selectedPackage] !== undefined) {
-        (subscriptionData.calculation as any).manualGiftSessions = manualGiftSessions;
-      }
+
       const response = await fetch("/api/subscription", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        credentials: "include", body: JSON.stringify(subscriptionData),
+        credentials: "include", body: JSON.stringify(body),
       });
-      if (response.ok) {
-        const result = await response.json();
-        setSubscriptionTitle(result.subscriptionType);
-        setIsCompleted(true);
-        await createAndSendOffer(result.saleId);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message);
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message);
+      }
+
+      const result = await response.json();
+      setSubscriptionTitle(result.subscriptionType);
+      setIsCompleted(true);
+
+      // Send contract by email
+      if (email) {
+        try {
+          const sr = await fetch(`/api/sales/${result.saleId}/send`, { method: "POST", credentials: "include" });
+          if (sr.ok) {
+            setOfferSent(true);
+            toast({ title: "Договор отправлен!", description: `Договор-оферта успешно отправлен на ${email}` });
+          }
+        } catch (e) {
+          console.error("Error sending contract:", e);
+        }
       }
     } catch (error) {
       toast({ title: "Ошибка", description: error instanceof Error ? error.message : "Не удалось создать абонемент", variant: "destructive" });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const createAndSendOffer = async (saleId?: number) => {
-    if (!selectedPackage || !calculation) return;
-    try {
-      const packageData = calculation.packages[selectedPackage];
-      const startDate = isAdmin ? new Date(saleDate) : new Date();
-      const paymentSchedule = [];
-      if (selectedPackage === "vip") {
-        paymentSchedule.push({ date: startDate.toISOString().split("T")[0], amount: packageData.finalCost, description: "Полная оплата" });
-      } else {
-        paymentSchedule.push({ date: startDate.toISOString().split("T")[0], amount: downPayment, description: "Первоначальный взнос" });
-        const monthly = (packageData.finalCost - downPayment) / installmentMonths;
-        for (let i = 1; i <= installmentMonths; i++) {
-          const d = new Date(startDate); d.setMonth(d.getMonth() + i);
-          paymentSchedule.push({ date: d.toISOString().split("T")[0], amount: monthly, description: `Платеж ${i} из ${installmentMonths}` });
-        }
-      }
-      const offerData = {
-        saleId, clientName, clientPhone: phone.replace(/\D/g, ""), clientEmail: email,
-        selectedPackage,
-        selectedServices: selectedServices.map(s => ({
-          id: s.yclientsId, title: s.title,
-          price: s.editedPrice || s.customPrice || s.priceMin, priceMin: s.priceMin,
-          editedPrice: s.editedPrice || s.customPrice,
-          quantity: s.quantity || 1, sessionCount: s.sessionCount || 10, count: s.sessionCount || 10,
-        })),
-        baseCost: calculation.baseCost, finalCost: packageData.finalCost,
-        totalSavings: packageData.totalSavings, downPayment,
-        installmentMonths: selectedPackage === "vip" ? undefined : installmentMonths,
-        monthlyPayment: selectedPackage === "vip" ? undefined : packageData.monthlyPayment,
-        paymentSchedule, appliedDiscounts: packageData.appliedDiscounts || [],
-        freeZones: freeZones || [], usedCertificate, manualGiftSessions: manualGiftSessions || {},
-        procedureCount,
-        ...(isAdmin && { saleDate, pdfVersion }),
-      };
-      const cr = await fetch("/api/offers", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        credentials: "include", body: JSON.stringify(offerData),
-      });
-      if (cr.ok) {
-        const offer = await cr.json();
-        const sr = await fetch(`/api/offers/${offer.id}/send`, { method: "POST", credentials: "include" });
-        if (sr.ok) {
-          setOfferSent(true);
-          toast({ title: "Договор отправлен!", description: `Договор-оферта успешно отправлен на ${email}` });
-        }
-      }
-    } catch (error) {
-      console.error("Error creating/sending offer:", error);
     }
   };
 
@@ -236,9 +224,8 @@ export default function ClientModal({
 
   const generatePaymentSchedule = () => {
     if (!selectedPackage || !calculation || selectedPackage === "vip") return [];
-    const schedule = [];
     const pkg = calculation.packages[selectedPackage];
-    schedule.push({ date: new Date(), amount: downPayment, description: "Первоначальный взнос" });
+    const schedule = [{ date: new Date(), amount: downPayment, description: "Первоначальный взнос" }];
     const monthly = (pkg.finalCost - downPayment) / installmentMonths;
     for (let i = 1; i <= installmentMonths; i++) {
       const d = new Date(); d.setMonth(d.getMonth() + i);
@@ -264,7 +251,7 @@ export default function ClientModal({
           width: "95vw",
         }}
       >
-        {/* Header strip */}
+        {/* Header */}
         <div style={{
           padding: "20px 24px 16px",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -272,15 +259,11 @@ export default function ClientModal({
         }}>
           <div style={{
             width: 38, height: 38, borderRadius: 12, flexShrink: 0,
-            background: isCompleted
-              ? "linear-gradient(135deg, #34D399, #059669)"
-              : "linear-gradient(135deg, #E8678A, #BE4C6E)",
+            background: isCompleted ? "linear-gradient(135deg, #34D399, #059669)" : "linear-gradient(135deg, #E8678A, #BE4C6E)",
             display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: isCompleted ? "0 4px 16px rgba(52,211,153,0.35)" : "0 4px 16px rgba(232,103,138,0.35)",
           }}>
-            {isCompleted
-              ? <CheckCircle size={18} color="#fff" />
-              : <User size={18} color="#fff" />}
+            {isCompleted ? <CheckCircle size={18} color="#fff" /> : <User size={18} color="#fff" />}
           </div>
           <div>
             <p style={{ fontSize: 15, fontWeight: 800, color: "#F2F2F7", letterSpacing: "-0.02em" }}>
@@ -294,7 +277,6 @@ export default function ClientModal({
 
         <div style={{ padding: "20px 24px 24px" }}>
           {isCompleted ? (
-            /* ── Success state ─────────────────────────────────────── */
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ ...G, padding: "14px 16px" }}>
                 <p style={labelStyle}>Название абонемента</p>
@@ -337,9 +319,7 @@ export default function ClientModal({
               </button>
             </div>
           ) : (
-            /* ── Form state ────────────────────────────────────────── */
             <div style={{ display: "grid", gridTemplateColumns: hasSchedule ? "1fr 1fr" : "1fr", gap: 20 }}>
-
               {/* Left: form */}
               <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
@@ -387,7 +367,6 @@ export default function ClientModal({
                         </Select>
                       </div>
                     </div>
-
                     <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
                   </>
                 )}
@@ -395,28 +374,17 @@ export default function ClientModal({
                 {/* Client fields */}
                 <div>
                   <label style={labelStyle}>ФИО клиента</label>
-                  <DarkInput
-                    value={clientName} onChange={setClientName}
-                    placeholder="Иванов Иван Иванович" required
-                  />
+                  <DarkInput value={clientName} onChange={setClientName} placeholder="Иванов Иван Иванович" required />
                 </div>
 
                 <div>
                   <label style={labelStyle}>Номер телефона</label>
-                  <PhoneInput
-                    value={phone} onChange={setPhone}
-                    placeholder="+7 (___) ___-__-__"
-                    required
-                    style={inputStyle}
-                  />
+                  <PhoneInput value={phone} onChange={setPhone} placeholder="+7 (___) ___-__-__" required style={inputStyle} />
                 </div>
 
                 <div>
                   <label style={labelStyle}>Email клиента</label>
-                  <DarkInput
-                    type="email" value={email} onChange={setEmail}
-                    placeholder="client@example.com" required
-                  />
+                  <DarkInput type="email" value={email} onChange={setEmail} placeholder="client@example.com" required />
                 </div>
 
                 <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
@@ -424,8 +392,7 @@ export default function ClientModal({
                     type="button" onClick={handleClose} disabled={loading}
                     style={{
                       flex: 1, padding: "10px", borderRadius: 12, cursor: "pointer",
-                      background: "rgba(255,255,255,0.07)",
-                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
                       color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700,
                     }}
                   >
@@ -459,34 +426,27 @@ export default function ClientModal({
                       График платежей
                     </p>
                   </div>
-
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {paymentSchedule.map((payment, i) => (
                       <div key={i} style={{ ...G, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{
                             width: 22, height: 22, borderRadius: 7, flexShrink: 0,
-                            background: "rgba(232,103,138,0.15)",
-                            border: "1px solid rgba(232,103,138,0.25)",
+                            background: "rgba(232,103,138,0.15)", border: "1px solid rgba(232,103,138,0.25)",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}>
                             <span style={{ fontSize: 10, fontWeight: 800, color: "#E8678A" }}>{i + 1}</span>
                           </div>
-                          <div>
-                            <p style={{ fontSize: 11, fontWeight: 700, color: "#F2F2F7" }}>{payment.description}</p>
-                          </div>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: "#F2F2F7" }}>{payment.description}</p>
                         </div>
                         <p style={{ fontSize: 12, fontWeight: 800, color: "#E8678A" }}>{formatPrice(payment.amount)}</p>
                       </div>
                     ))}
                   </div>
-
                   <div style={{
-                    ...G,
-                    padding: "10px 14px",
+                    ...G, padding: "10px 14px",
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    background: "rgba(232,103,138,0.1)",
-                    boxShadow: "inset 0 0 0 1px rgba(232,103,138,0.2)",
+                    background: "rgba(232,103,138,0.1)", boxShadow: "inset 0 0 0 1px rgba(232,103,138,0.2)",
                   }}>
                     <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>Итого:</p>
                     <p style={{ fontSize: 14, fontWeight: 900, color: "#E8678A" }}>

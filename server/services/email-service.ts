@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { Offer } from "@shared/schema";
+import { Sale } from "@shared/schema";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -28,7 +28,7 @@ export class EmailService {
         });
     }
 
-    async sendOfferEmail(offer: Offer, pdfBuffer: Buffer): Promise<boolean> {
+    async sendOfferEmail(offer: Sale, pdfBuffer: Buffer): Promise<boolean> {
         try {
             if (!offer.clientEmail) {
                 throw new Error("Email клиента не указан");
@@ -66,7 +66,7 @@ export class EmailService {
         }
     }
 
-    private generateEmailHTML(offer: Offer): string {
+    private generateEmailHTML(offer: Sale): string {
         const packageName = this.getPackageName(offer.selectedPackage);
         const formattedDate = format(
             new Date(offer.createdAt!),
