@@ -344,8 +344,7 @@ export default function MainCalculatorPanel({
                   }}
                 />
                 <TrackMarkers min={minDP} max={maxDP} dp={sliderVal} />
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
-                  <span style={{ fontSize: 10, color: "#AEAEB2", fontWeight: 500 }}>{formatPrice(minDP)}</span>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
                   <span style={{ fontSize: 10, color: "#AEAEB2", fontWeight: 500 }}>{formatPrice(maxDP)}</span>
                 </div>
               </>

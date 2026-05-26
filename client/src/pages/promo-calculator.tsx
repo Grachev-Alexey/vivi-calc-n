@@ -105,12 +105,12 @@ export default function PromoCalculatorPage({ user, onLogout }: Props) {
     ? globalMin
     : finalCost > 0 ? Math.max(1000, Math.floor(finalCost / 2 / 100) * 100) : 0;
   const rawDP      = downPayment > 0 ? downPayment : defaultDP;
-  // Slider minimum: always 1000 so master can manually enter from 1000
-  // If finalCost < 1000, cap minDP to finalCost
+  // Slider minimum = defaultDP (8000 or half of finalCost).
+  // Manual text input still allows going down to 1000 (clamped in the component).
   const maxDP      = trueMaxDP;
-  const minDP      = finalCost > 0 && trueMaxDP <= 1000
+  const minDP      = trueMaxDP <= defaultDP
     ? trueMaxDP
-    : Math.min(1000, trueMaxDP);
+    : defaultDP;
   // isFullPay: did the user commit enough to cover the ACTUAL cost at their tier?
   const isFullPay  = finalCost > 0 && rawDP >= finalCost;
   // effDP: cap at finalCost when in full-payment mode to prevent "overpayment"
