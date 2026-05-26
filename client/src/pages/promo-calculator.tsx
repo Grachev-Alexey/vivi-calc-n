@@ -3,6 +3,7 @@ import { BarChart3, X } from "lucide-react";
 import { Switch as NextSwitch } from "@nextui-org/react";
 import { useCalculator } from "@/hooks/use-calculator";
 import { formatPrice } from "@/lib/utils";
+import { getDiscountPct } from "@/lib/calculator";
 import { AuroraBackground } from "@/components/magicui/aurora-background";
 import ServiceSelector from "@/components/service-selector";
 import ClientModal from "@/components/client-modal";
@@ -11,16 +12,6 @@ import MainCalculatorPanel from "@/components/main-calculator-panel";
 
 interface User { id: number; name: string; role: "master" | "admin" }
 interface Props { user: User; onLogout: () => void }
-
-// Discount tiers — based purely on procedure count
-function getDiscountPct(proc: number): number {
-  if (proc >= 20) return 46;
-  if (proc >= 15) return 40;
-  if (proc >= 10) return 35;
-  if (proc >= 8)  return 30;
-  if (proc >= 5)  return 25;
-  return 20;
-}
 
 // Slider maximum = finalCost at the best available discount tier for given proc count.
 // Since discount no longer depends on dp, this is simply finalCost.

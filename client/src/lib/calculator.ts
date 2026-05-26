@@ -1,5 +1,15 @@
 // Frontend calculation logic moved from backend for better performance
 
+/** Discount tiers — based purely on procedure count */
+export function getDiscountPct(proc: number): number {
+  if (proc >= 20) return 46;
+  if (proc >= 15) return 40;
+  if (proc >= 10) return 35;
+  if (proc >= 8)  return 30;
+  if (proc >= 5)  return 25;
+  return 20;
+}
+
 export interface CalculationService {
   id: number;
   quantity: number;

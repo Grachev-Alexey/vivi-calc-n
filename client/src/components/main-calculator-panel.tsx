@@ -9,6 +9,7 @@ import { DotPattern } from "@/components/magicui/dot-pattern";
 import { ShinyButton } from "@/components/magicui/shiny-button";
 import { NumberTicker } from "@/components/magicui/number-ticker";
 import { formatPrice } from "@/lib/utils";
+import { getDiscountPct } from "@/lib/calculator";
 
 interface SelectedService {
   id: number; yclientsId: number; title: string;
@@ -37,16 +38,6 @@ interface Props {
   correctionPercent?: number;
   calculatorSettings?: any;
   onOrder: () => void;
-}
-
-// Discount tiers — based purely on procedure count
-function getDiscountPct(proc: number): number {
-  if (proc >= 20) return 46;
-  if (proc >= 15) return 40;
-  if (proc >= 10) return 35;
-  if (proc >= 8)  return 30;
-  if (proc >= 5)  return 25;
-  return 20;
 }
 
 /* ── Privileges ─────────────────────────────────────────────────────── */
