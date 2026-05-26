@@ -93,22 +93,24 @@ export default function PromoCalculatorPage({ user, onLogout }: Props) {
   );
 
   const baseCost   = calculation?.baseCost || 0;
-  const globalMin  = calculatorSettings?.minimumDownPayment || 5000;
-  const rawDP      = downPayment || globalMin;
+  const globalMin  = calculatorSettings?.minimumDownPayment || 8000;
   const basePct    = getDiscountPct(maxProc);
   const totalDisc  = Math.min(basePct + (correctionPercent || 0), 99);
   const certAmt    = usedCertificate ? (calculatorSettings?.certificateDiscountAmount || 3000) : 0;
   const finalCost  = baseCost > 0 ? Math.max(0, Math.round(baseCost * (1 - totalDisc / 100)) - certAmt) : 0;
   const savings    = baseCost > 0 ? baseCost - finalCost : 0;
   const trueMaxDP  = baseCost > 0 ? computeTrueMaxDP(baseCost, maxProc, correctionPercent || 0, certAmt, globalMin) : globalMin;
-  // When trueMaxDP <= globalMin the full cost is below the minimum down-payment,
-  // so no installment plan is possible → set minDP = maxDP (range = 0, no slider).
-  // Otherwise floor globalMin to nearest 100 so (maxDP - minDP) is always
-  // divisible by the slider step of 100 → smooth dragging, no stuck endpoint.
+  // Default down payment: 8000 if finalCost allows, otherwise half of finalCost
+  const defaultDP  = finalCost >= globalMin
+    ? globalMin
+    : finalCost > 0 ? Math.max(1000, Math.floor(finalCost / 2 / 100) * 100) : 0;
+  const rawDP      = downPayment > 0 ? downPayment : defaultDP;
+  // Slider minimum: always 1000 so master can manually enter from 1000
+  // If finalCost < 1000, cap minDP to finalCost
   const maxDP      = trueMaxDP;
-  const minDP      = trueMaxDP <= globalMin
+  const minDP      = finalCost > 0 && trueMaxDP <= 1000
     ? trueMaxDP
-    : Math.floor(globalMin / 100) * 100;
+    : Math.min(1000, trueMaxDP);
   // isFullPay: did the user commit enough to cover the ACTUAL cost at their tier?
   const isFullPay  = finalCost > 0 && rawDP >= finalCost;
   // effDP: cap at finalCost when in full-payment mode to prevent "overpayment"

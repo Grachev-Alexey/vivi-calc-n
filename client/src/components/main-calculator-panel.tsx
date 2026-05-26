@@ -50,16 +50,16 @@ function getDiscountPct(proc: number): number {
 }
 
 /* ── Privileges ─────────────────────────────────────────────────────── */
-// dpT = minimum down-payment (₽) to unlock; pMin = minimum procedures needed; fp = full-payment only
+// dpT = minimum down-payment (₽) to unlock; pMin = minimum procedures needed; fp = full-payment only; sessionMin = min sessionCount for any zone
 const PRIVS = [
-  { id: "small_zone",  Icon: Gift,       title: "Малая зона",    desc: "Зона в подарок",        dpT: 2000,  pMin: 0,  fp: false, color: "#818CF8" },
-  { id: "bonus50",     Icon: Percent,    title: "Бонус 50%",     desc: "50% взноса на счёт",    dpT: 4000,  pMin: 0,  fp: false, color: "#34D399" },
-  { id: "club_card",   Icon: CreditCard, title: "Клубная карта", desc: "Новые зоны −40%",        dpT: 7000,  pMin: 0,  fp: false, color: "#F472B6" },
-  { id: "gift_choice", Icon: Sparkles,   title: "Подарок",       desc: "Зона или процедура",    dpT: 10000, pMin: 0,  fp: false, color: "#FBBF24" },
-  { id: "priority",    Icon: Star,       title: "Приоритет",     desc: "К личному мастеру",     dpT: 12000, pMin: 0,  fp: false, color: "#60A5FA" },
-  { id: "guarantee",   Icon: Shield,     title: "Гарантия",      desc: "Гарантия результата",   dpT: 0,     pMin: 10, fp: false, color: "#A78BFA" },
-  { id: "bonus_proc",  Icon: PlusCircle, title: "+3 процедуры",  desc: "При полной оплате",     dpT: 99999, pMin: 0,  fp: true,  color: "#34D399" },
-  { id: "friend",      Icon: Heart,      title: "Подруга −50%",  desc: "При полной оплате",     dpT: 99999, pMin: 0,  fp: true,  color: "#F472B6" },
+  { id: "small_zone",  Icon: Gift,       title: "Малая зона",    desc: "Зона в подарок",        dpT: 8000,  pMin: 0,  fp: false, sessionMin: 0, color: "#818CF8" },
+  { id: "bonus50",     Icon: Percent,    title: "Бонус 50%",     desc: "50% взноса на счёт",    dpT: 4000,  pMin: 0,  fp: false, sessionMin: 0, color: "#34D399" },
+  { id: "club_card",   Icon: CreditCard, title: "Клубная карта", desc: "Новые зоны −40%",        dpT: 7000,  pMin: 0,  fp: false, sessionMin: 0, color: "#F472B6" },
+  { id: "gift_choice", Icon: Sparkles,   title: "Подарок",       desc: "Зона или процедура",    dpT: 10000, pMin: 0,  fp: false, sessionMin: 0, color: "#FBBF24" },
+  { id: "priority",    Icon: Star,       title: "Приоритет",     desc: "К личному мастеру",     dpT: 12000, pMin: 0,  fp: false, sessionMin: 0, color: "#60A5FA" },
+  { id: "guarantee",   Icon: Shield,     title: "Гарантия",      desc: "Гарантия результата",   dpT: 0,     pMin: 10, fp: false, sessionMin: 0, color: "#A78BFA" },
+  { id: "bonus_proc",  Icon: PlusCircle, title: "+3 процедуры",  desc: "Полная оплата + 7 сеансов", dpT: 99999, pMin: 0, fp: true, sessionMin: 7, color: "#34D399" },
+  { id: "friend",      Icon: Heart,      title: "Подруга −50%",  desc: "При полной оплате",     dpT: 99999, pMin: 0,  fp: true,  sessionMin: 0, color: "#F472B6" },
 ] as const;
 
 /* ── Discount hint ───────────────────────────────────────────────────── */
@@ -224,9 +224,13 @@ export default function MainCalculatorPanel({
   const monthOpts: number[] = calculatorSettings?.installmentMonthsOptions ?? [1, 2, 3, 4, 5, 6];
   const range = maxDP - minDP;
 
-  // Full payment unlocks ALL privileges; otherwise check dp threshold + proc min
+  // Check sessionMin: at least one zone must have sessionCount >= sessionMin
+  const sessionOk = (p: typeof PRIVS[number]) =>
+    !p.sessionMin || selectedServices.some(s => (s.sessionCount || 10) >= p.sessionMin);
+
+  // Full payment unlocks fp privileges (if sessionMin met); dp/proc perks check their thresholds
   const unlocked = (p: typeof PRIVS[number]) =>
-    isFullPayLive || (!p.fp && sliderVal >= p.dpT && (!p.pMin || maxProcedureCount >= p.pMin));
+    sessionOk(p) && (isFullPayLive ? (p.fp || (!p.fp && (!p.pMin || maxProcedureCount >= p.pMin))) : (!p.fp && sliderVal >= p.dpT && (!p.pMin || maxProcedureCount >= p.pMin)));
 
   const nextLocked = PRIVS.find(p => !unlocked(p));
   const toNext = nextLocked && !nextLocked.fp && nextLocked.dpT < 99999
@@ -289,7 +293,7 @@ export default function MainCalculatorPanel({
                   onBlur={() => {
                     const parsed = Math.round(Number(tempDP));
                     if (!isNaN(parsed) && parsed > 0) {
-                      const clamped = Math.max(minDP, Math.min(parsed, maxDP));
+                      const clamped = Math.max(1000, Math.min(parsed, maxDP));
                       onDownPaymentChange(clamped);
                     }
                     setEditingDP(false);
@@ -572,7 +576,12 @@ export default function MainCalculatorPanel({
             const pct = p.fp
               ? (isFullPayLive ? 100 : 0)
               : Math.min(dpPct, procPct);
-            const missing = p.fp ? (isFullPayment ? "" : "Полная оплата")
+            const hasSessions = sessionOk(p);
+            const missing = p.fp
+              ? (!isFullPayLive && !hasSessions) ? "Полная оплата + зона 7+ сеансов"
+                : !isFullPayLive ? "Нужна полная оплата"
+                : !hasSessions ? "Зона от 7 сеансов"
+                : ""
               : p.pMin > 0 && maxProcedureCount < p.pMin ? `Нужно ${p.pMin}+ сеансов`
               : sliderVal < p.dpT && p.dpT < 99999 ? `Ещё ${formatPrice(p.dpT - sliderVal)}` : "";
 

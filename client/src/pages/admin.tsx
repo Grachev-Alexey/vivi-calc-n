@@ -453,25 +453,25 @@ export default function AdminPage({ user, onLogout }: AdminPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b border-white/10" style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-              <Settings className="text-blue-600" size={24} />
-              <h1 className="text-xl font-semibold text-gray-900">
+              <Settings className="text-primary" size={24} />
+              <h1 className="text-xl font-semibold text-foreground">
                 Панель администратора
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-muted-foreground">
                 {user.name} ({user.role === 'admin' ? 'Администратор' : 'Мастер'})
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onLogout}
-                className="p-2 text-gray-600 hover:text-gray-900"
+                className="p-2 text-muted-foreground hover:text-foreground"
               >
                 <LogOut size={16} />
               </Button>
@@ -520,7 +520,7 @@ export default function AdminPage({ user, onLogout }: AdminPageProps) {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        <p className="text-gray-600">
+                        <p className="text-muted-foreground">
                           Синхронизация услуг с Yclients и управление их отображением в калькуляторе.
                         </p>
                         
@@ -546,7 +546,7 @@ export default function AdminPage({ user, onLogout }: AdminPageProps) {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        <p className="text-gray-600">
+                        <p className="text-muted-foreground">
                           Синхронизация типов абонементов с Yclients и просмотр их состава.
                         </p>
                         
