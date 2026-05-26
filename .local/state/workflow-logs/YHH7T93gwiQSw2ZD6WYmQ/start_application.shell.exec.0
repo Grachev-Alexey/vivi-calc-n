@@ -1,0 +1,17 @@
+3:41:43 PM [express] Development mode: using Vite middleware
+📱 Frontend: http://localhost:5000
+Environment: development
+
+Press Ctrl+C to stop the server
+
+3:41:43 PM [express] serving on port 5000
+3:41:51 PM [express] GET /api/auth/check 304 in 5ms :: {"user":{"id":1,"name":"Администратор","role"…
+3:41:51 PM [express] GET /api/services 304 in 9ms :: [{"id":1,"yclientsId":11254701,"title":"Верхняя…
+3:41:51 PM [express] GET /api/packages 304 in 8ms :: [{"id":1,"type":"vip","name":"VIP","discount":"…
+3:41:51 PM [express] GET /api/config/bulk_discount_threshold 304 in 6ms
+3:41:51 PM [express] GET /api/config/minimum_down_payment 304 in 5ms
+3:41:51 PM [express] GET /api/config/installment_months_options 304 in 5ms
+3:41:51 PM [express] GET /api/config/bulk_discount_percentage 304 in 5ms
+3:41:51 PM [express] GET /api/config/certificate_discount_percentage 304 in 5ms
+3:41:51 PM [express] GET /api/config/certificate_min_course_amount 304 in 6ms
+3:42:01 PM [express] GET /api/auth/check 401 in 1ms :: {"message":"Не авторизован"}

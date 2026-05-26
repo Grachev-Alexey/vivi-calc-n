@@ -1,0 +1,41 @@
+
+> vivi-calc@1.0.1 dev
+> tsx server/index.ts
+
+[1G[0K1:54:10 PM [express] Development mode: using Vite middleware
+📱 Frontend: http://localhost:5000
+Environment: development
+
+Press Ctrl+C to stop the server
+
+1:54:10 PM [express] serving on port 5000
+1:54:20 PM [express] GET /api/auth/check 401 in 3ms :: {"message":"Не авторизован"}
+1:54:35 PM [express] GET /api/auth/check 401 in 1ms :: {"message":"Не авторизован"}
+1:54:41 PM [express] GET /api/auth/check 401 in 1ms :: {"message":"Не авторизован"}
+1:54:44 PM [express] POST /api/auth 200 in 62ms :: {"user":{"id":1,"name":"Администратор","role":"ad…
+1:54:44 PM [express] GET /api/packages 200 in 16ms :: [{"id":1,"type":"vip","name":"VIP","discount":…
+1:54:44 PM [express] GET /api/config/minimum_down_payment 200 in 13ms
+1:54:44 PM [express] GET /api/config/bulk_discount_threshold 200 in 12ms
+1:54:44 PM [express] GET /api/config/bulk_discount_percentage 200 in 5ms
+1:54:44 PM [express] GET /api/services 200 in 9ms :: []
+1:54:44 PM [express] GET /api/config/installment_months_options 200 in 8ms
+1:54:44 PM [express] GET /api/config/certificate_discount_percentage 200 in 8ms
+1:54:44 PM [express] GET /api/config/certificate_min_course_amount 200 in 7ms
+1:54:51 PM [express] GET /api/auth/check 200 in 4ms :: {"user":{"id":1,"name":"Администратор","role"…
+1:54:51 PM [express] GET /api/packages 304 in 29ms :: [{"id":1,"type":"vip","name":"VIP","discount":…
+1:54:51 PM [express] GET /api/services 304 in 27ms :: []
+1:54:51 PM [express] GET /api/admin/users 200 in 13ms :: [{"id":1,"pin":"7571","role":"admin","name"…
+1:54:51 PM [express] GET /api/config/yclients 200 in 15ms
+1:54:52 PM [express] GET /api/packages 304 in 7ms :: [{"id":1,"type":"vip","name":"VIP","discount":"…
+1:55:13 PM [express] POST /api/config 200 in 41ms :: {"id":1,"key":"yclients","value":{"token":"u8xz…
+1:55:13 PM [express] GET /api/admin/services 200 in 10ms :: []
+1:55:16 PM [express] POST /api/services/sync 200 in 1924ms :: {"message":"Услуги синхронизированы","…
+1:55:25 PM [express] GET /api/auth/check 304 in 6ms :: {"user":{"id":1,"name":"Администратор","role"…
+1:55:25 PM [express] GET /api/packages 304 in 6ms :: [{"id":1,"type":"vip","name":"VIP","discount":"…
+1:55:25 PM [express] GET /api/services 200 in 19ms :: [{"id":1,"yclientsId":11254701,"title":"Верхня…
+1:55:25 PM [express] GET /api/config/bulk_discount_percentage 304 in 14ms
+1:55:25 PM [express] GET /api/config/minimum_down_payment 304 in 10ms
+1:55:25 PM [express] GET /api/config/bulk_discount_threshold 304 in 11ms
+1:55:25 PM [express] GET /api/config/installment_months_options 304 in 8ms
+1:55:25 PM [express] GET /api/config/certificate_discount_percentage 304 in 9ms
+1:55:25 PM [express] GET /api/config/certificate_min_course_amount 304 in 14ms
