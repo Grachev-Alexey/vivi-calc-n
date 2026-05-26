@@ -1,0 +1,274 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+:root {
+  --background: hsl(240, 6%, 7%);
+  --foreground: hsl(240, 9%, 96%);
+  --muted: hsl(240, 5%, 14%);
+  --muted-foreground: hsl(240, 4%, 56%);
+  --popover: hsl(240, 5%, 11%);
+  --popover-foreground: hsl(240, 9%, 96%);
+  --card: hsl(240, 5%, 12%);
+  --card-foreground: hsl(240, 9%, 96%);
+  --border: hsl(240, 4%, 20%);
+  --input: hsl(240, 4%, 20%);
+  --primary: hsl(340, 50%, 60%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(240, 5%, 18%);
+  --secondary-foreground: hsl(240, 9%, 80%);
+  --accent: hsl(340, 50%, 60%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 62.8%, 50%);
+  --destructive-foreground: hsl(210, 20%, 98%);
+  --ring: hsl(340, 50%, 60%);
+  --radius: 1rem;
+}
+
+.dark {
+  --background: hsl(240, 6%, 7%);
+  --foreground: hsl(240, 9%, 96%);
+  --muted: hsl(240, 5%, 14%);
+  --muted-foreground: hsl(240, 4%, 56%);
+  --popover: hsl(240, 5%, 11%);
+  --popover-foreground: hsl(240, 9%, 96%);
+  --card: hsl(240, 5%, 12%);
+  --card-foreground: hsl(240, 9%, 96%);
+  --border: hsl(240, 4%, 20%);
+  --input: hsl(240, 4%, 20%);
+  --primary: hsl(340, 50%, 60%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(240, 5%, 18%);
+  --secondary-foreground: hsl(240, 9%, 80%);
+  --accent: hsl(340, 50%, 60%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 62.8%, 50%);
+  --destructive-foreground: hsl(210, 20%, 98%);
+  --ring: hsl(340, 50%, 60%);
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin { scrollbar-width: thin; }
+.scrollbar-thumb-gray-300::-webkit-scrollbar { width: 6px; }
+.scrollbar-thumb-gray-300::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb { background-color: #3A3A3C; border-radius: 3px; }
+
+.custom-left-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  direction: rtl;
+}
+.custom-left-scrollbar > * { direction: ltr; }
+.custom-left-scrollbar::-webkit-scrollbar { width: 1px; }
+.custom-left-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-left-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 0px; }
+
+.table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.table-scroll::-webkit-scrollbar-track { background: transparent; border-radius: 3px; }
+.table-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+.table-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+@keyframes slideInFromTop {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-in { animation: slideInFromTop 200ms ease-out; }
+.slide-in-from-top-2 { animation: slideInFromTop 200ms ease-out; }
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+[data-radix-popper-content-wrapper] { z-index: 9999 !important; }
+[data-radix-select-content] { z-index: 9999 !important; }
+
+input::placeholder { color: rgba(255,255,255,0.3) !important; }
+
+.floating-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  background: #1C1C1E !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+.floating-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4) !important;
+}
+
+.package-card {
+  position: relative !important;
+  background: #1C1C1E !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+.package-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45) !important;
+}
+.package-card.selected {
+  outline: 2px solid hsl(340, 50%, 60%) !important;
+  box-shadow: 0 8px 25px rgba(192,96,128,0.2) !important;
+}
+
+.shadow-container { padding: 16px !important; margin: -8px !important; overflow: visible !important; position: relative !important; }
+.shadow-safe { overflow: visible !important; contain: layout !important; }
+.shadow-safe > * { overflow: visible !important; }
+.overflow-container { overflow: visible !important; position: relative !important; }
+.overflow-container > * { overflow: visible !important; }
+.package-grid-container { padding-top: 1rem; }
+.package-grid-container > div:nth-child(2) { margin-top: 1rem; }
+
+.table-row-enhanced {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.table-row-enhanced:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+@layer base {
+  * { @apply border-border; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: #0B0B0F;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply antialiased;
+  }
+}
+
+/* ── Calculator responsive layout ───────────────────────────────── */
+.calc-bg {
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+.calc-outer {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+.calc-left {
+  width: 242px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 20px 14px 14px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.calc-left::-webkit-scrollbar { display: none; }
+.calc-right {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 14px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.calc-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.calc-priv-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.priv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+/* ── Short screens (≤ 780px height) — compact privilege cards ───── */
+@media (max-height: 780px) {
+  .priv-grid { gap: 4px; }
+  .priv-card { border-radius: 10px !important; padding: 5px 6px !important; }
+  .priv-card-title { font-size: 10.5px !important; margin-bottom: 1px !important; }
+  .priv-card-desc { display: none !important; }
+  .priv-card-status { font-size: 9.5px !important; }
+}
+
+/* ── Very short screens (≤ 680px height) — ultra-compact ─────────── */
+@media (max-height: 680px) {
+  .priv-grid { gap: 3px; }
+  .priv-card { padding: 4px 5px !important; border-radius: 8px !important; }
+  .priv-card-title { font-size: 10px !important; }
+  .priv-card-status { display: none !important; }
+}
+
+/* ── Tablet (≤ 1100px) ─────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .calc-left { width: 210px; padding: 12px 14px 12px 12px; }
+  .priv-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── Small tablet (≤ 900px) ─────────────────────────────────────── */
+@media (max-width: 900px) {
+  .calc-left { width: 186px; padding: 10px 10px 10px 10px; }
+  .priv-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Mobile (≤ 767px) ───────────────────────────────────────────── */
+@media (max-width: 767px) {
+  html, body { overflow: auto; height: auto; }
+  .calc-bg { height: auto !important; overflow: auto !important; }
+  .calc-outer {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+  .calc-left {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+    overflow-y: visible;
+  }
+  .calc-right {
+    padding: 0 10px 16px;
+    overflow: visible;
+    flex: none;
+  }
+  .calc-panel {
+    height: auto;
+    overflow: visible;
+  }
+  .calc-priv-section {
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
+  .priv-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── 4K / wide screens (≥ 2200px) ───────────────────────────────── */
+@media (min-width: 2200px) {
+  .calc-left { width: 300px; padding: 20px 24px 20px 20px; }
+  .priv-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+}
