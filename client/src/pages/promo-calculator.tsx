@@ -30,7 +30,7 @@ function computeTrueMaxDP(
   if (baseCost <= 0) return globalMin;
   const bestPct = getDiscountPct(maxProc);
   const fc = Math.max(0, Math.round(baseCost * (1 - Math.min(bestPct + corrPct, 99) / 100)) - certAmt);
-  return Math.max(fc, globalMin);
+  return fc > 0 ? fc : globalMin;
 }
 
 /* Glass panel */
