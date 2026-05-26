@@ -27,8 +27,12 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx tsx server/index.ts"
+args = "node_modules/.bin/tsx server/index.ts"
 waitForPort = 5000
+
+[[ports]]
+localPort = 3070
+externalPort = 3000
 
 [[ports]]
 localPort = 5000
@@ -43,3 +47,4 @@ build = ["npm", "run", "build"]
 
 [userenv.shared]
 NODE_ENV = "development"
+PORT = "5000"
