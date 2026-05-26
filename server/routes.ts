@@ -8,8 +8,7 @@ import { z } from "zod";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 import { users, services, insertUserSchema, insertConfigSchema, insertServiceSchema, 
-  insertSubscriptionTypeSchema, insertPerkSchema, insertPackagePerkValueSchema,
-  insertPackageSchema, config, perks, packagePerkValues,
+  insertSubscriptionTypeSchema, insertPackageSchema, config,
   packages as packagesTable, sales, clients, subscriptionTypes, offers } from "@shared/schema";
 import fs from 'fs/promises';
 import path from 'path';
@@ -53,13 +52,12 @@ const calculationSchema = z.object({
     quantity: z.number()
   })).default([]),
   manualGiftSessions: z.record(z.string(), z.number()).optional(),
-  saleDate: z.string().optional(), // Дата продажи (для админов)
-  masterId: z.number().optional() // ID мастера (для админов)
-  // Примечание: pdfVersion не включен, так как это поле только для offers, а не для sales
+  saleDate: z.string().optional(),
+  masterId: z.number().optional()
 });
 
 const offerSchema = z.object({
-  saleId: z.number().optional(), // Связь с продажей
+  saleId: z.number().optional(),
   clientName: z.string().min(1),
   clientPhone: z.string().min(10),
   clientEmail: z.string().email(),
@@ -76,8 +74,8 @@ const offerSchema = z.object({
   freeZones: z.array(z.any()).optional(),
   usedCertificate: z.boolean().default(false),
   manualGiftSessions: z.record(z.string(), z.number()).optional(),
-  saleDate: z.string().optional(), // Дата продажи (для админов)
-  pdfVersion: z.enum(['standard', 'amendment']).optional() // Версия PDF (для админов)
+  saleDate: z.string().optional(),
+  pdfVersion: z.enum(['standard', 'amendment']).optional()
 });
 
 const configSchema = z.object({
@@ -86,7 +84,6 @@ const configSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize default data on startup
   await storage.initializeDefaultData();
   
   // Authentication
@@ -99,7 +96,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Неверный PIN-код" });
       }
 
-      // Store user in session
       (req.session as any).userId = user.id;
       (req.session as any).userRole = user.role;
       (req.session as any).userName = user.name;
@@ -110,7 +106,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: user.name, 
           role: user.role,
           isActive: user.isActive
-          // PIN is intentionally excluded for security
         } 
       });
     } catch (error) {
@@ -121,9 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/logout", (req, res) => {
     if (req.session) {
       req.session.destroy((err) => {
-        if (err) {
-          console.error('Session destruction error:', err);
-        }
+        if (err) console.error('Session destruction error:', err);
         res.json({ success: true });
       });
     } else {
@@ -131,7 +124,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth check route
   app.get("/api/auth/check", (req, res) => {
     const session = req.session as any;
     if (session?.userId) {
@@ -141,7 +133,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: session.userName || 'Пользователь', 
           role: session.userRole,
           isActive: true
-          // PIN is intentionally excluded for security
         } 
       });
     } else {
@@ -149,7 +140,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Middleware for authentication
   const requireAuth = (req: any, res: any, next: any) => {
     const session = req.session as any;
     if (!session?.userId) {
@@ -166,20 +156,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  // Get all active users (for admin dropdown in ClientModal)
-  // SECURITY: Only admins can access this endpoint and PIN codes are stripped
+  // Get active users (for admin dropdown in ClientModal)
   app.get("/api/users", requireAdmin, async (req, res) => {
     try {
-      const users = await storage.getAllUsers();
-      // Return only active users with sensitive data stripped
-      const activeUsers = users
+      const allUsers = await storage.getAllUsers();
+      const activeUsers = allUsers
         .filter(u => u.isActive)
         .map(u => ({
           id: u.id,
           name: u.name,
           role: u.role,
           isActive: u.isActive
-          // PIN is intentionally excluded for security
         }));
       res.json(activeUsers);
     } catch (error) {
@@ -190,8 +177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Services
   app.get("/api/services", requireAuth, async (req, res) => {
     try {
-      const services = await storage.getActiveServices();
-      res.json(services);
+      const servicesList = await storage.getActiveServices();
+      res.json(servicesList);
     } catch (error) {
       res.status(500).json({ message: "Ошибка получения услуг" });
     }
@@ -205,9 +192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const yclientsService = createYclientsService(yclientsConfig.value as YclientsConfig);
-      const services = await yclientsService.getServices();
+      const servicesList = await yclientsService.getServices();
       
-      for (const service of services) {
+      for (const service of servicesList) {
         await storage.upsertService({
           yclientsId: service.id,
           title: service.title,
@@ -217,13 +204,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json({ message: "Услуги синхронизированы", count: services.length });
+      res.json({ message: "Услуги синхронизированы", count: servicesList.length });
     } catch (error) {
       res.status(500).json({ message: "Ошибка синхронизации услуг" });
     }
   });
 
-  // Subscription Types sync
   app.post("/api/subscription-types/sync", requireAdmin, async (req, res) => {
     try {
       const yclientsConfig = await storage.getConfig('yclients');
@@ -232,9 +218,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const yclientsService = createYclientsService(yclientsConfig.value as YclientsConfig);
-      const subscriptionTypes = await yclientsService.getSubscriptionTypes();
+      const subscriptionTypesList = await yclientsService.getSubscriptionTypes();
       
-      for (const subscriptionType of subscriptionTypes) {
+      for (const subscriptionType of subscriptionTypesList) {
         await storage.upsertSubscriptionType({
           yclientsId: subscriptionType.id,
           title: subscriptionType.title,
@@ -245,18 +231,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json({ message: "Типы абонементов синхронизированы", count: subscriptionTypes.length });
+      res.json({ message: "Типы абонементов синхронизированы", count: subscriptionTypesList.length });
     } catch (error) {
       console.error("Error syncing subscription types:", error);
       res.status(500).json({ message: "Ошибка синхронизации типов абонементов" });
     }
   });
 
-  // Admin routes - Subscription Types Management  
   app.get("/api/admin/subscription-types", requireAdmin, async (req, res) => {
     try {
-      const subscriptionTypes = await storage.getSubscriptionTypes();
-      res.json(subscriptionTypes);
+      const subscriptionTypesList = await storage.getSubscriptionTypes();
+      res.json(subscriptionTypesList);
     } catch (error) {
       res.status(500).json({ message: "Ошибка получения типов абонементов" });
     }
@@ -265,8 +250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configuration
   app.get("/api/config/:key", requireAdmin, async (req, res) => {
     try {
-      const config = await storage.getConfig(req.params.key);
-      res.json(config?.value || null);
+      const configItem = await storage.getConfig(req.params.key);
+      res.json(configItem?.value || null);
     } catch (error) {
       res.status(500).json({ message: "Ошибка получения настроек" });
     }
@@ -275,116 +260,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/config", requireAdmin, async (req, res) => {
     try {
       const { key, value } = configSchema.parse(req.body);
-      const config = await storage.setConfig(key, value);
-      res.json(config);
+      const configItem = await storage.setConfig(key, value);
+      res.json(configItem);
     } catch (error) {
       res.status(400).json({ message: "Ошибка сохранения настроек" });
     }
   });
 
-  // Get packages configuration
+  // Packages
   app.get("/api/packages", requireAuth, async (req, res) => {
     try {
-      const packages = await storage.getPackages();
-      res.json(packages);
+      const packagesList = await storage.getPackages();
+      res.json(packagesList);
     } catch (error) {
       console.error('Error getting packages:', error);
       res.status(500).json({ message: "Ошибка получения пакетов" });
     }
   });
 
-  // Get all perks and package values
-  app.get("/api/perks", requireAuth, async (req, res) => {
+  app.post("/api/admin/packages", requireAdmin, async (req, res) => {
     try {
-      const perkValues = await storage.getPackagePerkValues();
-      res.json(perkValues);
-    } catch (error) {
-      console.error("Error getting perks:", error);
-      res.status(500).json({ message: "Ошибка получения перков" });
-    }
-  });
-
-  // Admin routes - Universal Perks Management
-  app.get("/api/admin/perks", requireAdmin, async (req, res) => {
-    try {
-      const perks = await storage.getPerks();
-      res.json(perks);
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка получения перков" });
-    }
-  });
-
-  app.get("/api/admin/perk-values", requireAdmin, async (req, res) => {
-    try {
-      const perkValues = await storage.getPackagePerkValues();
-      res.json(perkValues);
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка получения значений перков" });
-    }
-  });
-
-  app.post("/api/admin/perks", requireAdmin, async (req, res) => {
-    try {
-      const perk = req.body;
-      const result = await storage.createPerk(perk);
+      const packageData = req.body;
+      const result = await storage.upsertPackage(packageData);
       res.json(result);
     } catch (error) {
-      console.error('Error creating perk:', error);
-      res.status(500).json({ message: "Ошибка создания перка" });
+      console.error('Error saving package:', error);
+      res.status(500).json({ message: "Ошибка сохранения пакета" });
     }
   });
 
-  app.put("/api/admin/perks/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const result = await storage.updatePerk(parseInt(id), updates);
-      res.json(result);
-    } catch (error) {
-      console.error('Error updating perk:', error);
-      res.status(500).json({ message: "Ошибка обновления перка" });
-    }
-  });
-
-  app.post("/api/admin/perk-values", requireAdmin, async (req, res) => {
-    try {
-      const perkValue = req.body;
-      const result = await storage.createPackagePerkValue(perkValue);
-      res.json(result);
-    } catch (error) {
-      console.error('Error creating perk value:', error);
-      res.status(500).json({ message: "Ошибка создания значения перка" });
-    }
-  });
-
-  app.delete("/api/admin/perks/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.deletePerk(parseInt(id));
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error deleting perk:', error);
-      res.status(500).json({ message: "Ошибка удаления перка" });
-    }
-  });
-
-  app.put("/api/admin/perk-values/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const result = await storage.updatePackagePerkValue(parseInt(id), updates);
-      res.json(result);
-    } catch (error) {
-      console.error('Error updating perk value:', error);
-      res.status(500).json({ message: "Ошибка обновления значения перка" });
-    }
-  });
-
-  // Admin routes - User Management
+  // User management
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
-      const users = await storage.getAllUsers();
-      res.json(users);
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
     } catch (error) {
       res.status(500).json({ message: "Ошибка получения пользователей" });
     }
@@ -397,18 +306,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Необходимо заполнить все поля" });
       }
       
-      // Check if PIN already exists
       const existingUser = await storage.getUserByPin(pin);
       if (existingUser) {
         return res.status(400).json({ message: "Пользователь с таким PIN уже существует" });
       }
 
-      const user = await storage.createUser({
-        pin,
-        role,
-        name,
-        isActive: true
-      });
+      const user = await storage.createUser({ pin, role, name, isActive: true });
       res.json(user);
     } catch (error) {
       res.status(500).json({ message: "Ошибка создания пользователя" });
@@ -420,7 +323,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { pin, role, name, isActive } = req.body;
       
-      // Check if PIN is taken by another user
       if (pin) {
         const existingUser = await storage.getUserByPin(pin);
         if (existingUser && existingUser.id !== parseInt(id)) {
@@ -428,12 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const user = await storage.updateUser(parseInt(id), {
-        pin,
-        role,
-        name,
-        isActive
-      });
+      const user = await storage.updateUser(parseInt(id), { pin, role, name, isActive });
       
       if (!user) {
         return res.status(404).json({ message: "Пользователь не найден" });
@@ -450,7 +347,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = parseInt(id);
       
-      // Prevent deletion of current user
       if ((req as any).session.userId === userId) {
         return res.status(400).json({ message: "Нельзя удалить самого себя" });
       }
@@ -462,11 +358,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin routes - Service Management  
+  // Service management
   app.get("/api/admin/services", requireAdmin, async (req, res) => {
     try {
-      const services = await storage.getAllServices();
-      res.json(services);
+      const servicesList = await storage.getAllServices();
+      res.json(servicesList);
     } catch (error) {
       res.status(500).json({ message: "Ошибка получения услуг" });
     }
@@ -476,7 +372,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { yclientsId } = req.params;
       const { isActive } = req.body;
-      
       await storage.updateServiceStatus(parseInt(yclientsId), isActive);
       res.json({ success: true });
     } catch (error) {
@@ -484,9 +379,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales — admin view
   app.get("/api/admin/sales", requireAdmin, async (req, res) => {
     try {
-      // Get enhanced sales data with client names and offer information
       const salesData = await db.select({
         id: sales.id,
         clientPhone: clients.phone,
@@ -505,7 +400,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedServices: sales.selectedServices,
         appliedDiscounts: sales.appliedDiscounts,
         freeZones: sales.freeZones,
-        // Client name from offers (get the first one if multiple exist)
         clientName: sql<string | null>`(
           SELECT client_name 
           FROM offers 
@@ -537,28 +431,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .leftJoin(subscriptionTypes, eq(sales.subscriptionTypeId, subscriptionTypes.id))
       .orderBy(desc(sales.createdAt));
 
-      // Calculate summary statistics
       const totalSales = salesData.length;
       const totalRevenue = salesData.reduce((sum, sale) => sum + parseFloat(sale.finalCost || '0'), 0);
       const totalSavingsGiven = salesData.reduce((sum, sale) => sum + parseFloat(sale.totalSavings || '0'), 0);
       
-      // Group by package type
       const packageStats = salesData.reduce((acc, sale) => {
         const pkg = sale.selectedPackage || 'unknown';
-        if (!acc[pkg]) {
-          acc[pkg] = { count: 0, revenue: 0 };
-        }
+        if (!acc[pkg]) acc[pkg] = { count: 0, revenue: 0 };
         acc[pkg].count++;
         acc[pkg].revenue += parseFloat(sale.finalCost || '0');
         return acc;
       }, {} as Record<string, { count: number; revenue: number }>);
 
-      // Group by master
       const masterStats = salesData.reduce((acc, sale) => {
         const master = sale.masterName || 'Неизвестен';
-        if (!acc[master]) {
-          acc[master] = { count: 0, revenue: 0 };
-        }
+        if (!acc[master]) acc[master] = { count: 0, revenue: 0 };
         acc[master].count++;
         acc[master].revenue += parseFloat(sale.finalCost || '0');
         return acc;
@@ -566,13 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         sales: salesData,
-        summary: {
-          totalSales,
-          totalRevenue,
-          totalSavingsGiven,
-          packageStats,
-          masterStats
-        }
+        summary: { totalSales, totalRevenue, totalSavingsGiven, packageStats, masterStats }
       });
     } catch (error) {
       console.error('Error getting sales stats:', error);
@@ -580,12 +461,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Master sales endpoint - для просмотра продаж мастером
+  // Sales — master view
   app.get("/api/master/sales", requireAuth, async (req, res) => {
     try {
       const masterId = (req as any).session.userId;
       
-      // Get sales data for current master
       const salesData = await db.select({
         id: sales.id,
         clientPhone: clients.phone,
@@ -604,7 +484,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedServices: sales.selectedServices,
         appliedDiscounts: sales.appliedDiscounts,
         freeZones: sales.freeZones,
-        // Client name from offers (get the first one if multiple exist)
         clientName: sql<string | null>`(
           SELECT client_name 
           FROM offers 
@@ -637,17 +516,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .where(eq(sales.masterId, masterId))
       .orderBy(desc(sales.createdAt));
 
-      // Calculate summary statistics for this master
       const totalSales = salesData.length;
       const totalRevenue = salesData.reduce((sum, sale) => sum + parseFloat(sale.finalCost || '0'), 0);
       const totalSavingsGiven = salesData.reduce((sum, sale) => sum + parseFloat(sale.totalSavings || '0'), 0);
       
-      // Group by package type
       const packageStats = salesData.reduce((acc, sale) => {
         const pkg = sale.selectedPackage || 'unknown';
-        if (!acc[pkg]) {
-          acc[pkg] = { count: 0, revenue: 0 };
-        }
+        if (!acc[pkg]) acc[pkg] = { count: 0, revenue: 0 };
         acc[pkg].count++;
         acc[pkg].revenue += parseFloat(sale.finalCost || '0');
         return acc;
@@ -655,12 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         sales: salesData,
-        summary: {
-          totalSales,
-          totalRevenue,
-          totalSavingsGiven,
-          packageStats
-        }
+        summary: { totalSales, totalRevenue, totalSavingsGiven, packageStats }
       });
     } catch (error) {
       console.error('Error getting master sales:', error);
@@ -670,94 +540,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/admin/sales/:id", requireAdmin, async (req, res) => {
     try {
-      const { id } = req.params;
-      const saleId = parseInt(id);
-      
-      if (!saleId) {
-        return res.status(400).json({ message: "Неверный ID продажи" });
-      }
-      
+      const saleId = parseInt(req.params.id);
+      if (!saleId) return res.status(400).json({ message: "Неверный ID продажи" });
       await storage.deleteSale(saleId);
       res.json({ success: true });
     } catch (error) {
       console.error('Error deleting sale:', error);
       res.status(500).json({ message: "Ошибка удаления продажи" });
-    }
-  });
-
-  app.put("/api/admin/packages/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { bonusAccountPercent } = req.body;
-      
-      if (bonusAccountPercent === undefined || bonusAccountPercent < 0 || bonusAccountPercent > 1) {
-        return res.status(400).json({ message: "Неверное значение бонусного счета" });
-      }
-      
-      const result = await storage.updatePackage(parseInt(id), { bonusAccountPercent: bonusAccountPercent.toString() });
-      if (!result) {
-        return res.status(404).json({ message: "Пакет не найден" });
-      }
-      
-      res.json(result);
-    } catch (error) {
-      console.error('Error updating package:', error);
-      res.status(500).json({ message: "Ошибка обновления пакета" });
-    }
-  });
-
-  app.post("/api/admin/packages", requireAdmin, async (req, res) => {
-    try {
-      const packageData = req.body;
-      
-      const result = await storage.createOrUpdatePackage(packageData);
-      
-      res.json(result);
-    } catch (error) {
-      console.error('Error saving package:', error);
-      res.status(500).json({ message: "Ошибка сохранения пакета", error: error.message });
-    }
-  });
-
-  app.get("/api/admin/package-perks/:packageType", requireAdmin, async (req, res) => {
-    try {
-      const { packageType } = req.params;
-      const perks = await storage.getPackagePerks(packageType);
-      res.json(perks);
-    } catch (error: any) {
-      res.status(500).json({ message: "Ошибка получения преимуществ пакета" });
-    }
-  });
-
-  app.post("/api/admin/package-perks", requireAdmin, async (req, res) => {
-    try {
-      const perkData = req.body;
-      const result = await storage.upsertPackagePerk(perkData);
-      res.json(result);
-    } catch (error) {
-      console.error('Error saving perk:', error);
-      res.status(500).json({ message: "Ошибка сохранения плюшки пакета" });
-    }
-  });
-
-  // Sales statistics endpoint
-  app.get("/api/admin/sales", requireAdmin, async (req, res) => {
-    try {
-      const salesStats = await storage.getSalesStats();
-      res.json(salesStats);
-    } catch (error) {
-      console.error('Error fetching sales stats:', error);
-      res.status(500).json({ message: "Ошибка получения статистики продаж" });
-    }
-  });
-
-  app.delete("/api/admin/package-perks/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.deletePackagePerk(parseInt(id));
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления плюшки пакета" });
     }
   });
 
@@ -767,13 +556,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { client: clientData, calculation } = req.body;
       const { phone, email } = clientSchema.parse(clientData);
       
-      // Get or create client
       let client = await storage.getClientByPhone(phone);
       if (!client) {
         client = await storage.createClient({ phone, email: email || null });
       }
 
-      // Check if subscription type exists in Yclients
       const yclientsConfig = await storage.getConfig('yclients');
       if (!yclientsConfig) {
         return res.status(400).json({ message: "Настройки Yclients не найдены" });
@@ -781,40 +568,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const yclientsService = createYclientsService(yclientsConfig.value as YclientsConfig);
       
-      // Add service titles to calculation for title generation
       const allServices = await storage.getAllServices();
       const servicesWithTitles = calculation.services.map((service: any) => {
         const serviceData = allServices.find(s => s.yclientsId === service.id);
-        return {
-          ...service,
-          title: serviceData?.title || 'Неизвестная услуга'
-        };
+        return { ...service, title: serviceData?.title || 'Неизвестная услуга' };
       });
       calculation.services = servicesWithTitles;
 
-      // Try to find existing subscription type
-      console.log('=== DUPLICATE CHECK START ===');
-      console.log('Searching for existing subscription with services:', calculation.services.map((s: any) => ({ id: s.id, count: s.quantity || s.count || 1 })));
-      console.log('Target cost:', calculation.finalCost);
-      console.log('Package type:', calculation.packageType);
-      
       let subscriptionType = await storage.findSubscriptionType(
         calculation.services, 
         calculation.finalCost, 
         calculation.packageType
       );
-      
-      if (subscriptionType) {
-        console.log('🟢 FOUND EXISTING SUBSCRIPTION:', subscriptionType.title, 'ID:', subscriptionType.id);
-      } else {
-        console.log('🔴 NO EXISTING SUBSCRIPTION FOUND - WILL CREATE NEW');
-      }
-      console.log('=== DUPLICATE CHECK END ===');
 
       if (!subscriptionType) {
-        // Create new subscription type in Yclients
         const templateConfig = await storage.getConfig('subscriptionTemplate');
-        const template = templateConfig?.value || "Курс {services} - {package}";
+        const template = (templateConfig?.value as string) || "Курс {services} - {package}";
         
         const title = await generateSubscriptionTitle(template, calculation);
         
@@ -822,13 +591,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           serviceId: service.id || service.serviceId,
           count: service.sessionCount || service.count || 10
         }));
-
-        console.log('Creating subscription with data:', {
-          title,
-          cost: calculation.finalCost,
-          services: servicesForYclients,
-          packageType: calculation.packageType
-        });
 
         const yclientsSubscriptionType = await yclientsService.createSubscriptionType({
           title,
@@ -839,7 +601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           packageType: calculation.packageType
         });
 
-        // Save to local database
         subscriptionType = await storage.upsertSubscriptionType({
           yclientsId: yclientsSubscriptionType.id,
           title: yclientsSubscriptionType.title,
@@ -850,7 +611,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Enrich services data with current prices before saving
       const enrichedServices = calculation.services.map((service: any) => ({
         ...service,
         price: service.editedPrice || service.price || service.priceMin || service.cost || 0,
@@ -860,10 +620,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         count: service.sessionCount || service.quantity || service.count || 1
       }));
 
-      console.log('Original calculation.services:', calculation.services);
-      console.log('Saving enriched services:', enrichedServices);
-
-      // For admins, require explicit master selection
       const session = (req as any).session;
       let masterId = session.userId;
       
@@ -876,7 +632,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         masterId = calculation.masterId;
       }
       
-      // Save sale to database
       const sale = await storage.createSale({
         clientId: client.id,
         masterId: masterId,
@@ -907,7 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create directory for PDFs if it doesn't exist
+  // Create PDF directory
   const pdfDir = path.join(process.cwd(), 'pdfs');
   try {
     await fs.access(pdfDir);
@@ -915,34 +670,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await fs.mkdir(pdfDir, { recursive: true });
   }
 
-  // API endpoint for creating offers
+  // Create offer
   app.post("/api/offers", async (req, res) => {
     try {
       if (!req.session.userId) {
         return res.status(401).json({ message: "Не авторизован" });
       }
 
-      // Generate payment schedule first
       const paymentSchedule = generatePaymentSchedule(
         req.body.downPayment,
         req.body.finalCost,
         req.body.installmentMonths
       );
       
-      // Add payment schedule to request body for validation
-      const requestWithSchedule = {
+      const offerData = offerSchema.parse({
         ...req.body,
         paymentSchedule,
         appliedDiscounts: req.body.appliedDiscounts || [],
         freeZones: req.body.freeZones || []
-      };
+      });
       
-      const offerData = offerSchema.parse(requestWithSchedule);
-      
-      // Generate unique offer number
       const offerNumber = await generateUniqueOfferNumber();
 
-      // Create or find client
       let client = await storage.getClientByPhone(offerData.clientPhone);
       if (!client) {
         client = await storage.createClient({
@@ -951,15 +700,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Set expiration date (7 days from now)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
-      // Create offer
       const offer = await storage.createOffer({
         clientId: client.id,
         masterId: req.session.userId,
-        saleId: offerData.saleId, // Связываем оферту с продажей
+        saleId: offerData.saleId,
         offerNumber,
         selectedServices: offerData.selectedServices,
         selectedPackage: offerData.selectedPackage,
@@ -990,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API endpoint for generating PDF and sending email
+  // Send offer by email with PDF
   app.post("/api/offers/:id/send", async (req, res) => {
     try {
       if (!req.session.userId) {
@@ -998,75 +745,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const offerId = parseInt(req.params.id);
-
-      // Get offer
-      const offers = await storage.getOffersByMaster(req.session.userId);
-      const offer = offers.find(o => o.id === offerId);
+      const offersList = await storage.getOffersByMaster(req.session.userId);
+      const offer = offersList.find(o => o.id === offerId);
       
-      if (!offer) {
-        return res.status(404).json({ message: "Оферта не найдена" });
-      }
+      if (!offer) return res.status(404).json({ message: "Оферта не найдена" });
+      if (!offer.clientEmail) return res.status(400).json({ message: "Email клиента не указан" });
 
-      if (!offer.clientEmail) {
-        return res.status(400).json({ message: "Email клиента не указан" });
-      }
-
-      // Get email configuration from database
       const emailSettings = await storage.getConfig('email_settings');
       if (!emailSettings || !emailSettings.value) {
         return res.status(400).json({ message: "Настройки email не настроены" });
       }
 
       const emailConfig = emailSettings.value as any;
+      const packagesList = await storage.getPackages();
+      const packageData = packagesList.find(pkg => pkg.type === offer.selectedPackage);
 
-      // Get package data from database
-      const packages = await storage.getPackages();
-      const packageData = packages.find(pkg => pkg.type === offer.selectedPackage);
-
-      // Generate PDF
       const pdfBuffer = await pdfGenerator.generateOfferPDF(offer, packageData);
       
-      // Save PDF to file
       const fileName = `offer_${offer.offerNumber}.pdf`;
       const filePath = path.join(pdfDir, fileName);
       await fs.writeFile(filePath, pdfBuffer);
 
-      // Create email service based on configuration
       let emailService;
       switch (emailConfig.provider) {
         case 'gmail':
-          emailService = EmailServiceFactory.createGmailService(
-            emailConfig.email,
-            emailConfig.password
-          );
+          emailService = EmailServiceFactory.createGmailService(emailConfig.email, emailConfig.password);
           break;
         case 'yandex':
-          emailService = EmailServiceFactory.createYandexService(
-            emailConfig.email,
-            emailConfig.password
-          );
+          emailService = EmailServiceFactory.createYandexService(emailConfig.email, emailConfig.password);
           break;
         case 'mailru':
-          emailService = EmailServiceFactory.createMailRuService(
-            emailConfig.email,
-            emailConfig.password
-          );
+          emailService = EmailServiceFactory.createMailRuService(emailConfig.email, emailConfig.password);
           break;
         default:
           return res.status(400).json({ message: "Неподдерживаемый провайдер email" });
       }
 
-      // Test connection first
       const connectionTest = await emailService.testConnection();
       if (!connectionTest) {
         return res.status(500).json({ message: "Ошибка подключения к почтовому серверу" });
       }
 
-      // Send email
       const emailSent = await emailService.sendOfferEmail(offer, pdfBuffer);
       
       if (emailSent) {
-        // Update offer status with API path for PDF download
         await storage.updateOffer(offer.id, {
           pdfPath: `/api/pdf/${fileName}`,
           emailSent: true,
@@ -1074,11 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'sent'
         });
 
-        res.json({ 
-          success: true, 
-          message: "Оферта успешно отправлена",
-          pdfPath: filePath 
-        });
+        res.json({ success: true, message: "Оферта успешно отправлена", pdfPath: filePath });
       } else {
         res.status(500).json({ message: "Ошибка отправки email" });
       }
@@ -1088,43 +806,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API endpoint for getting offers
-  app.get("/api/offers", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Не авторизован" });
-      }
-
-      const offers = await storage.getOffersByMaster(req.session.userId);
-      res.json(offers);
-    } catch (error) {
-      console.error('Ошибка получения оферт:', error);
-      res.status(500).json({ message: "Ошибка получения оферт" });
-    }
-  });
-
-  // API endpoint for getting specific offer
-  app.get("/api/offers/:number", async (req, res) => {
-    try {
-      const offer = await storage.getOfferByNumber(req.params.number);
-      
-      if (!offer) {
-        return res.status(404).json({ message: "Оферта не найдена" });
-      }
-
-      res.json(offer);
-    } catch (error) {
-      console.error('Ошибка получения оферты:', error);
-      res.status(500).json({ message: "Ошибка получения оферты" });
-    }
-  });
-
-  // API endpoint for downloading PDF files
+  // Download PDF
   app.get("/api/pdf/:filename", async (req, res) => {
     try {
       const { filename } = req.params;
       
-      // Validate filename
       if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
         return res.status(400).json({ message: "Недопустимое имя файла" });
       }
@@ -1132,37 +818,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filePath = path.join(pdfDir, filename);
       const absolutePath = path.resolve(filePath);
       
-      console.log('PDF download request:', { 
-        filename, 
-        pdfDir, 
-        filePath, 
-        absolutePath
-      });
-      
-      // Check if file exists
       try {
         await fs.access(absolutePath);
-        const stats = await fs.stat(absolutePath);
-        console.log('PDF file found:', { size: stats.size, path: absolutePath });
       } catch (error) {
-        console.error('PDF file not found:', { error: error.message, path: absolutePath });
         return res.status(404).json({ message: "PDF файл не найден" });
       }
       
-      // Set headers for PDF download
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Cache-Control', 'no-cache');
       
-      // Send file
       res.sendFile(absolutePath, (err) => {
-        if (err) {
-          console.error('Error sending PDF file:', err);
-          if (!res.headersSent) {
-            res.status(500).json({ message: "Ошибка отправки файла" });
-          }
-        } else {
-          console.log('PDF file sent successfully:', filename);
+        if (err && !res.headersSent) {
+          res.status(500).json({ message: "Ошибка отправки файла" });
         }
       });
     } catch (error) {
@@ -1171,30 +839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API endpoint for updating offer status
-  app.patch("/api/offers/:id", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Не авторизован" });
-      }
-
-      const offerId = parseInt(req.params.id);
-      const { status } = req.body;
-
-      const updatedOffer = await storage.updateOffer(offerId, { status });
-      
-      if (!updatedOffer) {
-        return res.status(404).json({ message: "Оферта не найдена" });
-      }
-
-      res.json(updatedOffer);
-    } catch (error) {
-      console.error('Ошибка обновления оферты:', error);
-      res.status(500).json({ message: "Ошибка обновления оферты" });
-    }
-  });
-
-  // Email settings endpoints
+  // Email settings
   app.get("/api/admin/email-settings", async (req, res) => {
     try {
       if (!req.session.userId || req.session.userRole !== 'admin') {
@@ -1217,7 +862,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const emailSettings = req.body;
       await storage.setConfig('email_settings', emailSettings);
-      
       res.json({ success: true, message: "Настройки email сохранены" });
     } catch (error) {
       console.error('Ошибка сохранения настроек email:', error);
@@ -1231,10 +875,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Нет доступа" });
       }
 
-      const { provider, email, password, host, port, secure, fromName } = req.body;
+      const { provider, email, password, host, port, secure } = req.body;
       
       let emailService;
-      
       switch (provider) {
         case 'gmail':
           emailService = EmailServiceFactory.createGmailService(email, password);
@@ -1247,9 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         case 'custom':
           const customConfig = {
-            host,
-            port,
-            secure,
+            host, port, secure,
             auth: { user: email, pass: password },
             from: email
           };
@@ -1260,7 +901,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const testResult = await emailService.testConnection();
-      
       if (testResult) {
         res.json({ success: true, message: "Подключение успешно" });
       } else {
@@ -1276,115 +916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-function calculatePackagePricing(baseCost: number, calculation: any, packages: any) {
-  const { services, packageType, downPayment, installmentMonths, usedCertificate, freeZones } = calculation;
-  
-  // Calculate procedure count
-  const totalProcedures = services.reduce((sum: number, service: any) => sum + service.quantity, 0);
-  
-  // Base package discounts - get from packages array
-  const packageMap: Record<string, any> = {};
-  packages.forEach((pkg: any) => {
-    packageMap[pkg.type] = {
-      discount: parseFloat(pkg.discount),
-      minCost: parseFloat(pkg.minCost),
-      minDownPaymentPercent: parseFloat(pkg.minDownPaymentPercent),
-      requiresFullPayment: pkg.requiresFullPayment,
-      name: pkg.name
-    };
-  });
-  
-  const packageDiscounts = {
-    vip: packageMap.vip?.discount || 0,
-    standard: packageMap.standard?.discount || 0,
-    economy: packageMap.economy?.discount || 0
-  };
-
-  // Additional discounts
-  let additionalDiscount = 0;
-  
-  // Bulk procedure discount
-  if (totalProcedures >= 15) {
-    additionalDiscount += 0.025; // +2.5%
-  }
-  
-  // Certificate discount
-  let certificateDiscount = 0;
-  if (usedCertificate && baseCost >= 25000) {
-    certificateDiscount = 3000;
-  }
-
-  // Calculate for each package
-  const results: any = {};
-  
-  for (const [pkg, discount] of Object.entries(packageDiscounts)) {
-    let finalDiscount = discount as number + additionalDiscount;
-    
-    // Special logic for economy package
-    if (pkg === 'economy' && downPayment > 10000) {
-      finalDiscount = Math.max(finalDiscount, 0.30);
-    }
-    
-    const discountAmount = baseCost * finalDiscount;
-    const finalCost = baseCost - discountAmount - certificateDiscount;
-    
-    // Calculate free zones value
-    const freeZonesValue = freeZones.reduce((sum: number, zone: any) => {
-      return sum + (zone.pricePerProcedure * zone.quantity);
-    }, 0);
-    
-    const totalSavings = discountAmount + certificateDiscount + freeZonesValue;
-    
-    // Check availability
-    let isAvailable = true;
-    let unavailableReason = '';
-    
-    const pkgConfig = packageMap[pkg];
-    if (!pkgConfig) {
-      isAvailable = false;
-      unavailableReason = 'Пакет не найден';
-    } else {
-      // Check minimum cost requirement
-      if (baseCost < pkgConfig.minCost) {
-        isAvailable = false;
-        unavailableReason = `Минимальная стоимость курса ${pkgConfig.minCost.toLocaleString()} ₽`;
-      } else {
-        // All packages are available for selection - payment constraints will be applied when selected
-        isAvailable = true;
-        unavailableReason = '';
-      }
-    }
-    
-    // Calculate monthly payment
-    let monthlyPayment = 0;
-    if (isAvailable && installmentMonths && installmentMonths > 0 && pkg !== 'vip') {
-      monthlyPayment = (finalCost - downPayment) / installmentMonths;
-    }
-    
-    results[pkg] = {
-      isAvailable,
-      unavailableReason,
-      finalCost,
-      totalSavings,
-      monthlyPayment,
-      appliedDiscounts: [
-        { type: 'package', amount: discountAmount },
-        ...(additionalDiscount > 0 ? [{ type: 'bulk', amount: baseCost * 0.025 }] : []),
-        ...(certificateDiscount > 0 ? [{ type: 'certificate', amount: certificateDiscount }] : [])
-      ]
-    };
-  }
-  
-  return {
-    baseCost,
-    packages: results,
-    totalProcedures,
-    freeZonesValue: freeZones.reduce((sum: number, zone: any) => sum + (zone.pricePerProcedure * zone.quantity), 0)
-  };
-}
-
 async function generateSubscriptionTitle(template: string, calculation: any): Promise<string> {
-  // Get package name in Russian
   const packageNames = {
     'vip': 'ВИП',
     'standard': 'Стандарт',
@@ -1392,55 +924,39 @@ async function generateSubscriptionTitle(template: string, calculation: any): Pr
   };
   
   const packageName = packageNames[calculation.packageType as keyof typeof packageNames] || calculation.packageType;
-  
-  // Generate unique number combination
   const uniqueNumber = await generateUniqueSubscriptionNumber();
-  
-  // Get service names from calculation
   const serviceNames = calculation.services.map((s: any) => s.title || s.name).join(', ');
   
   return `${uniqueNumber} ${serviceNames} - ${packageName}`;
 }
 
 async function generateUniqueSubscriptionNumber(): Promise<string> {
-  const firstDigit = Math.floor(Math.random() * 4) + 1; // 1-4
+  const firstDigit = Math.floor(Math.random() * 4) + 1;
   
-  // Try to find unique combination
   for (let attempts = 0; attempts < 100; attempts++) {
-    const secondPart = Math.floor(Math.random() * 1000); // 0-999
+    const secondPart = Math.floor(Math.random() * 1000);
     const number = `${firstDigit}.${secondPart.toString().padStart(3, '0')}`;
-    
-    // Check if this number already exists
     const existing = await storage.findSubscriptionByNumber(number);
-    if (!existing) {
-      return number;
-    }
+    if (!existing) return number;
   }
   
-  // Fallback: use timestamp-based number
   const timestamp = Date.now().toString().slice(-3);
   return `${firstDigit}.${timestamp}`;
 }
 
 function getFreezePolicyForPackage(packageType: string): boolean {
-  return packageType !== 'none'; // All packages allow freeze
+  return packageType !== 'none';
 }
 
 function getFreezeLimitForPackage(packageType: string): number {
-  const limits = {
-    vip: 999, // Maximum allowed by Yclients
-    standard: 180, // 6 months
-    economy: 90 // 3 months
-  };
+  const limits = { vip: 999, standard: 180, economy: 90 };
   return (limits as any)[packageType] || 0;
 }
 
-// Generate unique offer number
 async function generateUniqueOfferNumber(): Promise<string> {
   const year = new Date().getFullYear().toString().slice(-2);
   const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
   
-  // Find the highest number for this month across ALL offers, not just one master
   const existingOffers = await storage.getAllOffers();
   const thisMonthPattern = new RegExp(`^${year}${month}(\\d{3})$`);
   
@@ -1457,7 +973,6 @@ async function generateUniqueOfferNumber(): Promise<string> {
   return `${year}${month}${nextNumber}`;
 }
 
-// Generate payment schedule
 function generatePaymentSchedule(
   downPayment: number, 
   finalCost: number, 
@@ -1466,14 +981,12 @@ function generatePaymentSchedule(
   const schedule = [];
   const today = new Date();
   
-  // First payment (down payment)
   schedule.push({
     date: today.toLocaleDateString('ru-RU'),
     amount: downPayment,
     description: 'Первоначальный взнос'
   });
   
-  // If there are installments
   if (installmentMonths && installmentMonths > 1) {
     const remainingAmount = finalCost - downPayment;
     const monthlyPayment = remainingAmount / installmentMonths;
