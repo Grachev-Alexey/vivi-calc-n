@@ -1,0 +1,38 @@
+
+> vivi-calc@1.0.1 dev
+> tsx server/index.ts
+
+[1G[0K7:35:12 AM [express] Development mode: using Vite middleware
+📱 Frontend: http://localhost:5000
+Environment: development
+
+Press Ctrl+C to stop the server
+
+7:35:12 AM [express] serving on port 5000
+7:35:21 AM [express] GET /api/auth/check 304 in 4ms :: {"user":{"id":1,"name":"Администратор","role"…
+7:35:22 AM [express] GET /api/config/installment_months_options 304 in 7ms
+7:35:22 AM [express] GET /api/services 304 in 8ms :: [{"id":1,"yclientsId":11254701,"title":"Верхняя…
+7:35:22 AM [express] GET /api/config/bulk_discount_percentage 304 in 9ms
+7:35:22 AM [express] GET /api/config/minimum_down_payment 304 in 5ms
+7:35:22 AM [express] GET /api/packages 304 in 5ms :: [{"id":1,"type":"vip","name":"VIP","discount":"…
+7:35:22 AM [express] GET /api/config/bulk_discount_threshold 304 in 5ms
+7:35:22 AM [express] GET /api/config/certificate_discount_percentage 304 in 5ms
+7:35:22 AM [express] GET /api/config/certificate_min_course_amount 304 in 7ms
+7:35:44 AM [express] GET /api/auth/check 304 in 7ms :: {"user":{"id":1,"name":"Администратор","role"…
+7:35:45 AM [express] GET /api/services 304 in 12ms :: [{"id":1,"yclientsId":11254701,"title":"Верхня…
+7:35:45 AM [express] GET /api/packages 304 in 6ms :: [{"id":1,"type":"vip","name":"VIP","discount":"…
+7:35:45 AM [express] GET /api/config/bulk_discount_threshold 304 in 6ms
+7:35:45 AM [express] GET /api/config/minimum_down_payment 304 in 5ms
+7:35:45 AM [express] GET /api/config/bulk_discount_percentage 304 in 6ms
+7:35:45 AM [express] GET /api/config/installment_months_options 304 in 4ms
+7:35:46 AM [express] GET /api/config/certificate_min_course_amount 304 in 4ms
+7:35:46 AM [express] GET /api/config/certificate_discount_percentage 304 in 5ms
+7:36:51 AM [express] GET /api/auth/check 304 in 3ms :: {"user":{"id":1,"name":"Администратор","role"…
+7:36:56 AM [express] GET /api/services 304 in 7ms :: [{"id":1,"yclientsId":11254701,"title":"Верхняя…
+7:36:56 AM [express] GET /api/packages 304 in 7ms :: [{"id":1,"type":"vip","name":"VIP","discount":"…
+7:36:56 AM [express] GET /api/config/minimum_down_payment 304 in 4ms
+7:36:56 AM [express] GET /api/config/bulk_discount_threshold 304 in 6ms
+7:36:56 AM [express] GET /api/config/bulk_discount_percentage 304 in 8ms
+7:36:56 AM [express] GET /api/config/installment_months_options 304 in 9ms
+7:36:56 AM [express] GET /api/config/certificate_discount_percentage 304 in 5ms
+7:36:56 AM [express] GET /api/config/certificate_min_course_amount 304 in 6ms
