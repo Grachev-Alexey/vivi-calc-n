@@ -1,4 +1,6 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+// Only load .env values that aren't already set in the environment (Replit secrets take priority)
+dotenv.config({ override: false });
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -83,7 +85,7 @@ app.use((req, res, next) => {
     log('Development mode: using Vite middleware');
   }
 
-  const port = process.env.PORT || 5000;
+  const port = 5000;
   server.listen(port, "0.0.0.0", () => {
     console.log(`📱 Frontend: http://localhost:${port}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
